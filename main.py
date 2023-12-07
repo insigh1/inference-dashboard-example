@@ -13,11 +13,10 @@ def parse_args():
     parser.add_argument("--version_id", default="1", help="Version ID (default: 1)")
     parser.add_argument("--api_key", help="API key (required)")
     parser.add_argument("--video_path", help="Path to the video (required)")
-    parser.add_argument("--interval_minutes", type=int, default=1, help="Interval in seconds (default: 60)")
+    parser.add_argument("--interval_seconds", type=float, default=60.0, help="Interval in seconds (default: 60)")
     return parser.parse_args()
 
-
-def extract_frames(video_path, interval_minutes):
+def extract_frames(video_path, interval_seconds):
     cap = cv2.VideoCapture(video_path)
     frames = []
     timestamps = []
@@ -28,13 +27,12 @@ def extract_frames(video_path, interval_minutes):
         ret, frame = cap.read()
         if not ret:
             break
-        if frame_count % (fps * interval_minutes) == 0:
+        if frame_count % (fps * interval_seconds) < 1.0:  # Check if the remainder is less than 1 to handle float intervals
             frames.append(frame)
             timestamps.append(frame_count / fps)
         frame_count += 1
     cap.release()
     return frames, timestamps
-
 
 def fetch_predictions(base_url, frames, timestamps, dataset_id, version_id, api_key, confidence=0.5):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -88,10 +86,9 @@ def main():
     dataset_id = args.dataset_id
     version_id = args.version_id
     api_key = args.api_key
-    interval_minutes = args.interval_minutes * 60
+    interval_seconds = args.interval_seconds  # removed the multiplication by 60
 
-
-    frames, timestamps = extract_frames(video_path, interval_minutes)
+    frames, timestamps = extract_frames(video_path, interval_seconds)
     df = fetch_predictions(base_url, frames, timestamps, dataset_id, version_id, api_key)
 
     if not os.path.exists("results"):
